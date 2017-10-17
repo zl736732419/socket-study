@@ -1,4 +1,4 @@
-package com.zheng.socket.traditional;
+package com.zheng.socket.pseduoasync;
 
 import com.zheng.socket.constants.Constants;
 
@@ -32,13 +32,12 @@ public class TimeClient {
         BufferedReader reader = null;
         PrintWriter writer = null;
         try {
-            InputStream input = socket.getInputStream();
             OutputStream output = socket.getOutputStream();
+            InputStream input = socket.getInputStream();
             reader = new BufferedReader(new InputStreamReader(input));
             writer = new PrintWriter(output);
 
             String line;
-            String response;
             while (true) {
                 System.out.println("请输入您要发送的消息：");
                 Scanner scanner = new Scanner(System.in);
@@ -48,8 +47,7 @@ public class TimeClient {
                 }
                 writer.println(line); // 发送给服务器
                 writer.flush();
-                response = reader.readLine();
-                System.out.println("响应： " + response);
+                System.out.println("响应： " + reader.readLine());
             }
             System.out.println("bye...");
         } catch (IOException e) {

@@ -1,5 +1,7 @@
 package com.zheng.socket.traditional;
 
+import com.zheng.socket.constants.Constants;
+
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Optional;
@@ -11,8 +13,6 @@ import java.util.Optional;
  */
 public class TimeServer {
     private ServerSocket serverSocket;
-    private static final String host = "127.0.0.1";
-    private static final Integer port = 8000;
     
     public static void main(String[] args) throws Exception {
         TimeServer server = new TimeServer();
@@ -20,11 +20,11 @@ public class TimeServer {
     }
 
     private void start() throws Exception {
-        serverSocket = new ServerSocket(port);
+        serverSocket = new ServerSocket(Constants.PORT);
         Socket socket;
         try {
             while(true) {
-                System.out.println("服务器监听接口: " + port);
+                System.out.println("服务器监听接口: " + Constants.PORT);
                 socket = serverSocket.accept();
                 // 每次接受到一个客户端请求之后就创建一个线程去负责处理
                 new Thread(new TimeServerHandler(socket)).start(); 
