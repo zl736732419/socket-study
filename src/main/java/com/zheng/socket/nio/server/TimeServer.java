@@ -15,9 +15,7 @@ public class TimeServer implements Runnable {
     private ServerSocketChannel serverSocketChannel;
     private Selector selector;
     
-    private Integer port;
     public TimeServer(Integer port) {
-        this.port = port;
         try {
             selector = Selector.open();
             serverSocketChannel = ServerSocketChannel.open();
