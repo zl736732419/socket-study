@@ -1,10 +1,19 @@
 package com.zheng.socket.nio.server;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * @Author zhenglian
@@ -14,7 +23,12 @@ public class TimeServer implements Runnable {
     
     private ServerSocketChannel serverSocketChannel;
     private Selector selector;
-    
+    private volatile boolean stop = false;
+
+    /**
+     * 初始化serverSocket服务器配置信息
+     * @param port
+     */
     public TimeServer(Integer port) {
         try {
             selector = Selector.open();
@@ -34,6 +48,87 @@ public class TimeServer implements Runnable {
     
     @Override
     public void run() {
+        while(!stop) {
+            try {
+                selector.select(1000);
+                // 获取到建立连接的客户端
+                Set<SelectionKey> selectionKeys = selector.selectedKeys();
+                Iterator<SelectionKey> it = selectionKeys.iterator();
+                SelectionKey key = null;
+                while(it.hasNext()) {
+                    key = it.next();
+                    it.remove(); // 处理的客户端连接不能重复处理，所以需要排除掉
+                    handleInput(key);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
         
+        // 多路复用器关闭后，注册到上面的所有channel和pipe等资源都将自动关闭
+        if (Optional.ofNullable(selector).isPresent()) {
+            try {
+                selector.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
+
+    /**
+     * 处理客户端连接请求
+     * @param key
+     */
+    private void handleInput(SelectionKey key) {
+        if (key.isValid()) {
+            // 处理新接入的请求
+            if (key.isAcceptable()) {
+                ServerSocketChannel channel = (ServerSocketChannel) key.channel();
+                try {
+                    SocketChannel sc = channel.accept();
+                    ByteBuffer buffer = ByteBuffer.allocate(1024);
+                    int readBytes = sc.read(buffer); // 获取接受到的信息长度
+                    if (readBytes > 0) {
+                        buffer.flip();
+                        byte[] bytes = new byte[buffer.remaining()];
+                        buffer.get(bytes);
+                        String body = new String(bytes, StandardCharsets.UTF_8);
+                        System.out.println("the time server receive order: " + body);
+                        // 返回响应信息
+                        String currentTime = "QUERY TIME ORDER".equalsIgnoreCase(body) 
+                                ? new Date(System.currentTimeMillis()).toString()
+                                : "BAD ORDER";
+                        writeResponse(sc, currentTime);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    /**
+     * 响应消息
+     * @param sc
+     * @param response
+     */
+    private void writeResponse(SocketChannel sc, String response) {
+        if (StringUtils.isEmpty(response)) {
+            return;
+        }
+        byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+        ByteBuffer buffer = ByteBuffer.allocate(bytes.length);
+        buffer.put(bytes);
+        buffer.flip();
+        try {
+            sc.write(buffer);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void stop() {
+        this.stop = true;
+    }
+
 }
