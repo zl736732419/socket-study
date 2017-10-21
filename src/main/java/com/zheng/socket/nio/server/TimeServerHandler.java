@@ -19,17 +19,28 @@ import java.util.Set;
  * @Author zhenglian
  * @Date 2017/10/19 17:43
  */
-public class TimeServer implements Runnable {
-    
+public class TimeServerHandler implements Runnable {
+
     private ServerSocketChannel serverSocketChannel;
+    private SocketChannel sc;
     private Selector selector;
     private volatile boolean stop = false;
 
     /**
      * 初始化serverSocket服务器配置信息
+     *
      * @param port
      */
-    public TimeServer(Integer port) {
+    public TimeServerHandler(Integer port) {
+        config(port);
+    }
+
+    /**
+     * 配置服务器信息
+     *
+     * @param port
+     */
+    private void config(Integer port) {
         try {
             // 打开selector多路复用选择器
             selector = Selector.open();
@@ -38,7 +49,7 @@ public class TimeServer implements Runnable {
             // 设置连接为非阻塞的
             serverSocketChannel.configureBlocking(false);
             // 服务器监听端口
-            serverSocketChannel.socket().bind(new InetSocketAddress(port));
+            serverSocketChannel.socket().bind(new InetSocketAddress(port), 1024);
             // 将channel注册到selector多路复用器
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT); // 等待客户端发起链接
             System.out.println("服务器已启动，监听本地端口: " + port);
@@ -47,28 +58,37 @@ public class TimeServer implements Runnable {
             throw new RuntimeException("发生错误: " + e.getLocalizedMessage());
         }
     }
-    
+
     @Override
     public void run() {
         // 轮询查看是否有客户端的可用连接进来
-        while(!stop) {
+        while (!stop) {
             try {
                 // 设置复用器扫描可用连接的超时时间，1秒，无参方法将会阻塞
                 selector.select(1000);
                 // 获取到建立连接的客户端
                 Set<SelectionKey> selectionKeys = selector.selectedKeys();
                 Iterator<SelectionKey> it = selectionKeys.iterator();
-                SelectionKey key = null;
-                while(it.hasNext()) {
+                SelectionKey key;
+                while (it.hasNext()) {
                     key = it.next();
                     it.remove(); // 处理的客户端连接不能重复处理，所以需要排除掉
-                    handleInput(key);
+                    try {
+                        handleInput(key);
+                    } catch (Exception e) {
+                        if (Optional.ofNullable(key).isPresent()) {
+                            key.cancel();
+                            if (Optional.ofNullable(key.channel()).isPresent()) {
+                                key.channel().close();
+                            }
+                        }
+                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        
+
         // 多路复用器关闭后，注册到上面的所有channel和pipe等资源都将自动关闭
         if (Optional.ofNullable(selector).isPresent()) {
             try {
@@ -81,34 +101,26 @@ public class TimeServer implements Runnable {
 
     /**
      * 处理客户端连接请求
+     *
      * @param key
      */
-    private void handleInput(SelectionKey key) {
+    private void handleInput(SelectionKey key) throws IOException {
         if (!key.isValid()) {
             return;
         }
         // 处理新接入的请求
-        SocketChannel sc = null;
         if (key.isAcceptable()) {
             ServerSocketChannel channel = (ServerSocketChannel) key.channel();
-            try {
-                sc = channel.accept();
-                // 设置连接为非阻塞模式
-                sc.configureBlocking(false);
-                sc.register(selector, SelectionKey.OP_READ);
-            } catch (IOException e) {
-                throw new RuntimeException(e.getLocalizedMessage());
-            }
+            sc = channel.accept();
+            // 设置连接为非阻塞模式
+            sc.configureBlocking(false);
+            sc.register(selector, SelectionKey.OP_READ);
         }
         // 当前连接可读
         if (key.isReadable()) {
             ByteBuffer buffer = ByteBuffer.allocate(1024);
             int readBytes = 0; // 获取接受到的信息长度
-            try {
-                readBytes = sc.read(buffer);
-            } catch (IOException e) {
-                throw new RuntimeException("读取客户端发送的数据失败，错误原因：" + e.getLocalizedMessage());
-            }
+            readBytes = sc.read(buffer);
             if (readBytes > 0) {
                 buffer.flip();
                 byte[] bytes = new byte[buffer.remaining()];
@@ -122,11 +134,7 @@ public class TimeServer implements Runnable {
                 writeResponse(sc, currentTime);
             } else if (readBytes < 0) {
                 key.cancel();
-                try {
-                    sc.close();
-                } catch (IOException e) {
-                    throw new RuntimeException("关闭socketChannel连接异常");
-                }
+                sc.close();
             } else {
                 // 读到0字节，自动忽略
             }
@@ -135,6 +143,7 @@ public class TimeServer implements Runnable {
 
     /**
      * 响应消息
+     *
      * @param sc
      * @param response
      */
@@ -142,6 +151,7 @@ public class TimeServer implements Runnable {
         if (StringUtils.isEmpty(response)) {
             return;
         }
+        System.out.println("服务器响应消息: " + response);
         byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
         ByteBuffer buffer = ByteBuffer.allocate(bytes.length);
         buffer.put(bytes);

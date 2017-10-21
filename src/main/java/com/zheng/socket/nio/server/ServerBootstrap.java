@@ -4,10 +4,10 @@ package com.zheng.socket.nio.server;
  * @Author zhenglian
  * @Date 2017/10/19 17:38
  */
-public class Bootstrap {
+public class ServerBootstrap {
     
     private Integer port;
-    public Bootstrap(Integer port) {
+    public ServerBootstrap(Integer port) {
         this.port = port;
     }
 
@@ -17,6 +17,6 @@ public class Bootstrap {
      */
     public static void main(String[] args) {
         int port = 8000;
-        new Thread(new TimeServer(port)).start();
+        new Thread(new TimeServerHandler(port)).start();
     }
 }
