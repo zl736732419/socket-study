@@ -31,7 +31,9 @@ public class TimeServer implements Runnable {
      */
     public TimeServer(Integer port) {
         try {
+            // 打开selector多路复用选择器
             selector = Selector.open();
+            // 打开服务端channel通道
             serverSocketChannel = ServerSocketChannel.open();
             // 设置连接为非阻塞的
             serverSocketChannel.configureBlocking(false);
@@ -48,8 +50,10 @@ public class TimeServer implements Runnable {
     
     @Override
     public void run() {
+        // 轮询查看是否有客户端的可用连接进来
         while(!stop) {
             try {
+                // 设置复用器扫描可用连接的超时时间，1秒，无参方法将会阻塞
                 selector.select(1000);
                 // 获取到建立连接的客户端
                 Set<SelectionKey> selectionKeys = selector.selectedKeys();
@@ -80,29 +84,51 @@ public class TimeServer implements Runnable {
      * @param key
      */
     private void handleInput(SelectionKey key) {
-        if (key.isValid()) {
-            // 处理新接入的请求
-            if (key.isAcceptable()) {
-                ServerSocketChannel channel = (ServerSocketChannel) key.channel();
+        if (!key.isValid()) {
+            return;
+        }
+        // 处理新接入的请求
+        SocketChannel sc = null;
+        if (key.isAcceptable()) {
+            ServerSocketChannel channel = (ServerSocketChannel) key.channel();
+            try {
+                sc = channel.accept();
+                // 设置连接为非阻塞模式
+                sc.configureBlocking(false);
+                sc.register(selector, SelectionKey.OP_READ);
+            } catch (IOException e) {
+                throw new RuntimeException(e.getLocalizedMessage());
+            }
+        }
+        // 当前连接可读
+        if (key.isReadable()) {
+            ByteBuffer buffer = ByteBuffer.allocate(1024);
+            int readBytes = 0; // 获取接受到的信息长度
+            try {
+                readBytes = sc.read(buffer);
+            } catch (IOException e) {
+                throw new RuntimeException("读取客户端发送的数据失败，错误原因：" + e.getLocalizedMessage());
+            }
+            if (readBytes > 0) {
+                buffer.flip();
+                byte[] bytes = new byte[buffer.remaining()];
+                buffer.get(bytes);
+                String body = new String(bytes, StandardCharsets.UTF_8);
+                System.out.println("the time server receive order: " + body);
+                // 返回响应信息
+                String currentTime = "QUERY TIME ORDER".equalsIgnoreCase(body)
+                        ? new Date(System.currentTimeMillis()).toString()
+                        : "BAD ORDER";
+                writeResponse(sc, currentTime);
+            } else if (readBytes < 0) {
+                key.cancel();
                 try {
-                    SocketChannel sc = channel.accept();
-                    ByteBuffer buffer = ByteBuffer.allocate(1024);
-                    int readBytes = sc.read(buffer); // 获取接受到的信息长度
-                    if (readBytes > 0) {
-                        buffer.flip();
-                        byte[] bytes = new byte[buffer.remaining()];
-                        buffer.get(bytes);
-                        String body = new String(bytes, StandardCharsets.UTF_8);
-                        System.out.println("the time server receive order: " + body);
-                        // 返回响应信息
-                        String currentTime = "QUERY TIME ORDER".equalsIgnoreCase(body) 
-                                ? new Date(System.currentTimeMillis()).toString()
-                                : "BAD ORDER";
-                        writeResponse(sc, currentTime);
-                    }
+                    sc.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    throw new RuntimeException("关闭socketChannel连接异常");
                 }
+            } else {
+                // 读到0字节，自动忽略
             }
         }
     }
