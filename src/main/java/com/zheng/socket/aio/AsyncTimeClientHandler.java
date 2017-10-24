@@ -51,6 +51,7 @@ public class AsyncTimeClientHandler implements Runnable, CompletionHandler<Void,
                 if (attachment.hasRemaining()) {
                     client.write(attachment, attachment, this);
                 } else {
+                    // 数据没有发送完成，继续发送
                     ByteBuffer readBuffer = ByteBuffer.allocate(1024);
                     client.read(readBuffer, readBuffer, new CompletionHandler<Integer, ByteBuffer>() {
                         @Override
