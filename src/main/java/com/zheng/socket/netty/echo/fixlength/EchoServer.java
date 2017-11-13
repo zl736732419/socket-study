@@ -15,6 +15,7 @@ import io.netty.handler.logging.LoggingHandler;
 
 /**
  * 使用fixlengthframeDecoder解码器
+ * 对固定长度的消息进行解码
  * @Author zhenglian
  * @Date 2017/11/13 13:50
  */

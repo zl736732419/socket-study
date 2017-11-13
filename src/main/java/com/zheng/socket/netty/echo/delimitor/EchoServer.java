@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * 采用delimiterBasedFrameDecoder + StringDecoder进行包的处理
+ * 对采用特定分隔符结尾的消息进行解码
  * @Author zhenglian
  * @Date 2017/11/13 11:47
  */
