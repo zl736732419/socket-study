@@ -1,4 +1,4 @@
-package com.zheng.socket.netty;
+package com.zheng.socket.netty.timeserver;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
@@ -55,8 +55,19 @@ public class TimeServer {
 
         @Override
         protected void initChannel(SocketChannel sc) throws Exception {
+            // 以换行符\r\n作为分隔符
             sc.pipeline().addLast(new LineBasedFrameDecoder(1024));
+
+            // 采用特定分隔符进行分隔
+//            DelimiterBasedFrameDecoder
+            // 解析定长消息
+//            FixedLengthFrameDecoder
+            
+            // 将读取到的内容转化成string
             sc.pipeline().addLast(new StringDecoder());
+            
+            // 使用LineBasedFrameDecoder+StringDecoder就构成了一个字符串拆分工具
+            
             sc.pipeline().addLast(new TimeServerHandler());
         }
     }

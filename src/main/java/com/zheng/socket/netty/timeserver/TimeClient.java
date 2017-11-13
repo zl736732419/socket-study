@@ -1,4 +1,4 @@
-package com.zheng.socket.netty;
+package com.zheng.socket.netty.timeserver;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
