@@ -13,18 +13,21 @@ import java.util.Date;
  * @Author zhenglian
  * @Date 2017/10/31 17:46
  */
-public class TimerServerHandler extends ChannelHandlerAdapter {
+public class TimeServerHandler extends ChannelHandlerAdapter {
+    private int counter;
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        ByteBuf buf = (ByteBuf) msg;
-        byte[] req = new byte[buf.readableBytes()];
-        buf.readBytes(req);
-        String body = new String(req, StandardCharsets.UTF_8);
-        System.out.println("time server recieve request order: " + body);
+//        ByteBuf buf = (ByteBuf) msg;
+//        byte[] req = new byte[buf.readableBytes()];
+//        buf.readBytes(req);
+//        String body = new String(req, StandardCharsets.UTF_8).substring(0, req.length - System.getProperty("line.separator").length());
+        String body = (String) msg;
+        System.out.println("time server recieve request order: " + body + "; the counter is: " + ++counter);
         String currentTime = "QUERY TIME ORDER".equalsIgnoreCase(body) ? new Date(System.currentTimeMillis()).toString()
                 : "BAD ORDER";
+        currentTime = currentTime + System.getProperty("line.separator");
         ByteBuf response = Unpooled.copiedBuffer(currentTime.getBytes(StandardCharsets.UTF_8));
-        ctx.write(response);
+        ctx.writeAndFlush(response);
     }
 
     @Override
