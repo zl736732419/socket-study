@@ -23,6 +23,7 @@ public class TimeServer {
     private void bind(int port) {
         // 配置服务器端的NIO线程组
         EventLoopGroup bossGroup = new NioEventLoopGroup();
+        // reactor线程组，一个用于服务端接受客户端的连接，一个用于socketchannel网络读写
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(bossGroup, workerGroup)
@@ -44,7 +45,10 @@ public class TimeServer {
         }
 
     }
-    
+
+    /**
+     * io事件、记录日志、消息编解码
+     */
     private class ChildChannelHandler extends ChannelInitializer<SocketChannel> {
 
         @Override
