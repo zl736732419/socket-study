@@ -1,4 +1,4 @@
-package com.zheng.socket.netty.echo;
+package com.zheng.socket.netty.echo.delimitor;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerAdapter;

@@ -1,4 +1,4 @@
-package com.zheng.socket.netty.echo;
+package com.zheng.socket.netty.echo.delimitor;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
